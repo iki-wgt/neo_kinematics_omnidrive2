@@ -40,6 +40,7 @@
 #include <chrono>
 #include <nav_msgs/msg/odometry.hpp>
 #include <geometry_msgs/msg/twist.hpp>
+#include <geometry_msgs/msg/twist_stamped.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <trajectory_msgs/msg/joint_trajectory.hpp>
 #include <sensor_msgs/msg/joy.hpp>
@@ -56,6 +57,7 @@ public:
         this->declare_parameter<int>("num_wheels", 3);
         this->declare_parameter<double>("wheel_radius", 2.2);
         this->declare_parameter<double>("wheel_lever_arm", 5.0);
+        this->declare_parameter<bool>("use_stamped_cmd_vel", true);
 
   		if(!this->get_parameter("num_wheels", m_num_wheels)) {
 			throw std::logic_error("missing num_wheels param");
@@ -73,6 +75,7 @@ public:
 		this->get_parameter_or("homeing_button", m_homeing_button, 0);
 		this->get_parameter_or("steer_reset_button", m_steer_reset_button, 1);
 		this->get_parameter_or("control_rate", m_control_rate, 50.0);
+		this->get_parameter_or("use_stamped_cmd_vel", m_use_stamped_cmd_vel, true);
 
 		if(m_num_wheels < 1) {
 			throw std::logic_error("invalid num_wheels param");
@@ -116,7 +119,12 @@ public:
 		br_drive_pub = this->create_publisher<std_msgs::msg::Float64>("/mpo_700_wheel_back_right_controller/command", 1);
 		fr_drive_pub = this->create_publisher<std_msgs::msg::Float64>("/mpo_700_wheel_front_right_controller/command", 1);
 
-		m_sub_cmd_vel = this->create_subscription<geometry_msgs::msg::Twist>("/cmd_vel", 1, std::bind(&NeoOmniDriveNode::cmd_vel_callback, this, _1));
+		if(m_use_stamped_cmd_vel) {
+			m_sub_cmd_vel_stamped = this->create_subscription<geometry_msgs::msg::TwistStamped>("/cmd_vel", 1, std::bind(&NeoOmniDriveNode::cmd_vel_stamped_callback, this, _1));
+		}
+		else {
+			m_sub_cmd_vel = this->create_subscription<geometry_msgs::msg::Twist>("/cmd_vel", 1, std::bind(&NeoOmniDriveNode::cmd_vel_callback, this, _1));
+		}
 		m_sub_joint_state = this->create_subscription<sensor_msgs::msg::JointState>("/joint_states", 1, std::bind(&NeoOmniDriveNode::joint_state_callback, this, _1));
 		m_pub_joint_trajectory = this->create_publisher<trajectory_msgs::msg::JointTrajectory>("/drives/joint_trajectory", 1);
 		// timer_ = this->create_wall_timer(500ms, std::bind(&NeoOmniDriveNode::timer_callback, this));
@@ -198,11 +206,21 @@ public:
 private:
 	void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr twist)
 	{
+		set_cmd_vel(*twist);
+	}
+
+	void cmd_vel_stamped_callback(const geometry_msgs::msg::TwistStamped::SharedPtr twist)
+	{
+		set_cmd_vel(twist->twist);
+	}
+
+	void set_cmd_vel(const geometry_msgs::msg::Twist& twist)
+	{
 		std::lock_guard<std::mutex> lock(m_node_mutex);
 		m_last_cmd_time = rclcpp::Clock().now();
-    	m_last_cmd_vel.linear.x = twist->linear.x;
-    	m_last_cmd_vel.linear.y = twist->linear.y;
-    	m_last_cmd_vel.angular.z = twist->angular.z;
+    	m_last_cmd_vel.linear.x = twist.linear.x;
+    	m_last_cmd_vel.linear.y = twist.linear.y;
+    	m_last_cmd_vel.angular.z = twist.angular.z;
 	}
 
 	void joint_state_callback(sensor_msgs::msg::JointState::SharedPtr joint_state)
@@ -268,6 +286,7 @@ private:
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr fl_caster_pub;
 
 	rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr m_sub_cmd_vel;
+	rclcpp::Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr m_sub_cmd_vel_stamped;
 	rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr m_sub_joint_state;
 
 	bool m_broadcast_tf = false;
@@ -287,6 +306,7 @@ private:
 	rclcpp::Time m_last_cmd_time;
 	geometry_msgs::msg::Twist m_last_cmd_vel;
 	bool is_cmd_timeout = false;
+	bool m_use_stamped_cmd_vel = true;
 
 	double m_curr_odom_x = 0;
 	double m_curr_odom_y = 0;
@@ -314,4 +334,3 @@ int main(int argc, char** argv)
 
 	return 0;
 }
-

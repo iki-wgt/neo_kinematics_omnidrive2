@@ -16,6 +16,7 @@ neo_omnidrive_node:
     can_iface: can0
     motor_timeout: 0.2
     cmd_timeout: 0.2
+    use_stamped_cmd_vel: true
     trajectory_timeout: 0.1
     home_vel: -1.0
     odom_frame: "odom"
@@ -35,7 +36,7 @@ neo_omnidrive_node:
       rot_sign: 1
       gear_ratio: 19
       enc_ticks_per_rev: 10000
-      home_angle: 180
+      home_angle: 180.0
       home_dig_in: 9
       enc_home_offset: 5433
 
@@ -53,7 +54,7 @@ neo_omnidrive_node:
       rot_sign: -1
       gear_ratio: 19
       enc_ticks_per_rev: 10000
-      home_angle: 180
+      home_angle: 180.0
       home_dig_in: 9
       enc_home_offset: -6296
 
@@ -71,7 +72,7 @@ neo_omnidrive_node:
       rot_sign: 1
       gear_ratio: 19
       enc_ticks_per_rev: 10000
-      home_angle: 0
+      home_angle: 0.0
       home_dig_in: 9
       enc_home_offset: 5641
 
@@ -89,8 +90,6 @@ neo_omnidrive_node:
       rot_sign: -1
       gear_ratio: 19
       enc_ticks_per_rev: 10000
-      home_angle: 0
+      home_angle: 0.0
       home_dig_in: 9
       enc_home_offset: -6186
-
-
